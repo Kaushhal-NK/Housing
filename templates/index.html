@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>USC Student Housing Matcher</title>
+  <style>
+    body { font-family: sans-serif; max-width: 560px; margin: 40px auto; padding: 0 16px; }
+    label { display: block; margin-top: 16px; font-weight: bold; }
+    input, select { width: 100%; padding: 8px; margin-top: 4px; box-sizing: border-box; }
+    button { margin-top: 24px; padding: 10px 20px; font-size: 1rem; }
+  </style>
+</head>
+<body>
+  <h1>USC Student Housing Matcher</h1>
+  <form action="/submit" method="post">
+
+    <label for="budget_max">1. What is your monthly budget maximum?</label>
+    <input type="number" step="1" min="0" name="budget_max" id="budget_max" required>
+
+    <label for="unit_type">2. Entire unit to yourself, or open to a shared house?</label>
+    <select name="unit_type" id="unit_type" required>
+      <option value="entire">Entire unit</option>
+      <option value="shared">Shared house</option>
+    </select>
+
+    <label for="room_privacy">3. If shared: private room, or open to sharing a room?</label>
+    <select name="room_privacy" id="room_privacy">
+      <option value="private">Private room</option>
+      <option value="shared">Open to sharing a room</option>
+    </select>
+
+    <label for="bathroom_privacy">4. If shared: private bathroom, or open to sharing a bathroom?</label>
+    <select name="bathroom_privacy" id="bathroom_privacy">
+      <option value="private">Private bathroom</option>
+      <option value="shared">Open to sharing a bathroom</option>
+    </select>
+
+    <label for="unit_size">5. Unit size preference</label>
+    <select name="unit_size" id="unit_size" required>
+      <option value="studio">Studio</option>
+      <option value="1br">One bedroom</option>
+      <option value="2br">Two bedroom</option>
+      <option value="3br+">Three plus bedroom</option>
+    </select>
+
+    <label for="distance_max_miles">6. Location anchor: max distance from USC in miles (default 3)</label>
+    <input type="number" step="0.1" min="0" name="distance_max_miles" id="distance_max_miles" placeholder="3">
+
+    <label for="move_in_date">7. Move in date</label>
+    <input type="date" name="move_in_date" id="move_in_date" required>
+
+    <label for="has_pet">8. Do you have a pet?</label>
+    <select name="has_pet" id="has_pet" required>
+      <option value="no">No</option>
+      <option value="yes">Yes</option>
+    </select>
+
+    <button type="submit">Find matches</button>
+  </form>
+</body>
+</html>
