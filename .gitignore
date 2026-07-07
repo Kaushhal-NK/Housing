@@ -8,4 +8,8 @@ venv/
 env/
 .venv/
 
-geocode_cache.json
+# geocode_cache.json is intentionally committed, not ignored: Render's disk
+# is ephemeral, so without a seeded cache every cold start re-geocodes all
+# ~600+ addresses from scratch at OpenStreetMap's ~1 req/sec rate limit
+# (~11 minutes). Shipping a warm cache means cold starts only geocode
+# genuinely new addresses. See README.md for how to refresh this file.
