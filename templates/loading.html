@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="refresh" content="15; url=/">
+  <title>Loading - USC Student Housing Matcher</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="top-bar">
+    <div class="inner">
+      <h1>Still loading listings</h1>
+      <div class="tagline">This only happens right after a fresh deploy</div>
+    </div>
+  </div>
+
+  <div class="page">
+    <div class="card">
+      <p>We're pulling live listings from property managers and calculating distances from USC.
+      On a fresh start this can take several minutes.</p>
+      <p>This page will refresh automatically in 15 seconds - or
+      <a class="back-link" href="/">go back and try your search again</a> once it's ready.</p>
+    </div>
+  </div>
+</body>
+</html>

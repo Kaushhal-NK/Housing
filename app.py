@@ -1,10 +1,19 @@
 """Flask front end for the USC student housing matcher.
 
 Listing pools are fetched and geocoded once at startup (not per-request) -
-each build involves live network calls to 3 property management sites plus
-OpenStreetMap geocoding, which is too slow to repeat on every form submit.
+each build involves live network calls to 11 property management sites plus
+OpenStreetMap geocoding (~600+ addresses, ~1 req/sec rate limit), which is
+too slow to repeat on every form submit and, on a platform like Render,
+too slow to do *before* the process starts listening on $PORT. Render's
+deploy health check gives up and marks the deploy failed if nothing binds
+the port within its scan window (confirmed in production: the 707-listing
+pool took long enough that Render killed the deploy after ~5 minutes of
+"No open ports detected"). So the initial load also happens in a background
+thread - gunicorn binds the port immediately, and the app serves the intake
+form right away; /submit shows a "still loading" message until the first
+load finishes.
 
-Two refresh paths keep that data from going stale:
+Two refresh paths keep that data from going stale after the initial load:
 1. A background thread reloads everything once a day. Only helps while the
    process stays alive - Render's free tier spins the service down after 15
    minutes idle, so on free tier this thread may never fire between cold
@@ -32,6 +41,9 @@ app = Flask(__name__)
 REFRESH_INTERVAL_SECONDS = 24 * 60 * 60
 REFRESH_TOKEN = os.environ.get("REFRESH_TOKEN")
 _data_lock = threading.Lock()
+_data_ready = threading.Event()
+
+SCORED_POOL, BONUS_POOL, DISTANCES = [], [], {}
 
 
 def _load_data():
@@ -43,18 +55,24 @@ def _load_data():
     return scored_pool, bonus_pool, distances
 
 
-SCORED_POOL, BONUS_POOL, DISTANCES = _load_data()
-
-
 def _apply_refresh():
     """Reload the pools and swap them in under a lock. Raises on failure so
-    callers (the background loop, the /refresh route) can decide how to
-    report it - either way the old data stays live until a reload succeeds."""
+    callers (the initial-load thread, the background loop, the /refresh
+    route) can decide how to report it - either way the old data (or the
+    empty initial state) stays live until a reload succeeds."""
     global SCORED_POOL, BONUS_POOL, DISTANCES
     scored_pool, bonus_pool, distances = _load_data()
     with _data_lock:
         SCORED_POOL, BONUS_POOL, DISTANCES = scored_pool, bonus_pool, distances
+    _data_ready.set()
     return scored_pool, bonus_pool
+
+
+def _initial_load():
+    try:
+        _apply_refresh()
+    except Exception as exc:
+        print(f"Initial data load failed: {exc}")
 
 
 def _refresh_loop():
@@ -67,6 +85,7 @@ def _refresh_loop():
             print(f"Background refresh failed, keeping existing data: {exc}")
 
 
+threading.Thread(target=_initial_load, daemon=True).start()
 threading.Thread(target=_refresh_loop, daemon=True).start()
 
 
@@ -129,6 +148,9 @@ def refresh():
 
 @app.route("/submit", methods=["POST"])
 def submit():
+    if not _data_ready.is_set():
+        return render_template("loading.html"), 503
+
     prefs = _build_prefs_from_form(request.form)
 
     matched, used_fallback = run_matching(SCORED_POOL, prefs, DISTANCES)
