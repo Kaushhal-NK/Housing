@@ -27,8 +27,16 @@ Two refresh paths keep that data from going stale after the initial load:
 """
 
 import os
+import sys
 import threading
 import time
+
+# Line-buffer stdout so Render's logs show accurate timestamps for each
+# print() as it actually happens. Without this, Python batches output and
+# flushes it all at once - which made "Ready: N scored listings" appear to
+# happen instantly when the real work (11 live site fetches) was still
+# running, and made a genuine ~30s wait look like a stuck/broken app.
+sys.stdout.reconfigure(line_buffering=True)
 
 from flask import Flask, jsonify, render_template, request
 
