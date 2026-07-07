@@ -18,10 +18,19 @@ HEADERS = {"User-Agent": "usc-housing-matcher/1.0 (student project, contact: n/a
 
 
 def _load_cache():
-    if os.path.exists(CACHE_PATH):
+    if not os.path.exists(CACHE_PATH):
+        print(f"[geocode] no cache file found at {CACHE_PATH} - starting empty")
+        return {}
+
+    try:
         with open(CACHE_PATH, "r", encoding="utf-8") as f:
-            return json.load(f)
-    return {}
+            cache = json.load(f)
+    except (OSError, json.JSONDecodeError) as exc:
+        print(f"[geocode] found {CACHE_PATH} but failed to load it ({exc}) - starting empty")
+        return {}
+
+    print(f"[geocode] loaded cache from {CACHE_PATH}: {len(cache)} entries")
+    return cache
 
 
 def _save_cache(cache):
