@@ -53,13 +53,23 @@ _data_ready = threading.Event()
 
 SCORED_POOL, BONUS_POOL, DISTANCES = [], [], {}
 
+# Diagnostic state only - not used for any real logic, just so /status can
+# show what THIS process (this specific gunicorn worker/PID) has actually
+# done, since worker restarts mean log lines from a previous, now-dead
+# worker can look like progress that never reached the one serving traffic.
+_PROCESS_STARTED_AT = time.time()
+_load_started_at = None
+_load_finished_at = None
+_last_load_error = None
+_initial_load_thread = None
+
 
 def _load_data():
-    print("Loading listing pools...")
+    print(f"[pid {os.getpid()}] Loading listing pools...")
     scored_pool, bonus_pool = build_pools()
     all_addresses = [l.address for l in scored_pool] + [l.address for l in bonus_pool]
     distances = distances_for_addresses(all_addresses)
-    print(f"Ready: {len(scored_pool)} scored listings, {len(bonus_pool)} bonus listings.")
+    print(f"[pid {os.getpid()}] Ready: {len(scored_pool)} scored listings, {len(bonus_pool)} bonus listings.")
     return scored_pool, bonus_pool, distances
 
 
@@ -77,10 +87,14 @@ def _apply_refresh():
 
 
 def _initial_load():
+    global _load_started_at, _load_finished_at, _last_load_error
+    _load_started_at = time.time()
     try:
         _apply_refresh()
+        _load_finished_at = time.time()
     except Exception as exc:
-        print(f"Initial data load failed: {exc}")
+        _last_load_error = repr(exc)
+        print(f"[pid {os.getpid()}] Initial data load failed: {exc}")
 
 
 def _refresh_loop():
@@ -88,12 +102,13 @@ def _refresh_loop():
         time.sleep(REFRESH_INTERVAL_SECONDS)
         try:
             _apply_refresh()
-            print("Background refresh complete.")
+            print(f"[pid {os.getpid()}] Background refresh complete.")
         except Exception as exc:
-            print(f"Background refresh failed, keeping existing data: {exc}")
+            print(f"[pid {os.getpid()}] Background refresh failed, keeping existing data: {exc}")
 
 
-threading.Thread(target=_initial_load, daemon=True).start()
+_initial_load_thread = threading.Thread(target=_initial_load, daemon=True)
+_initial_load_thread.start()
 threading.Thread(target=_refresh_loop, daemon=True).start()
 
 
@@ -139,6 +154,23 @@ def _bonus_matches(prefs):
 @app.route("/")
 def index():
     return render_template("index.html")
+
+
+@app.route("/status")
+def status():
+    now = time.time()
+    return jsonify({
+        "pid": os.getpid(),
+        "process_uptime_seconds": round(now - _PROCESS_STARTED_AT, 1),
+        "data_ready": _data_ready.is_set(),
+        "scored_count": len(SCORED_POOL),
+        "bonus_count": len(BONUS_POOL),
+        "initial_load_thread_alive": _initial_load_thread.is_alive() if _initial_load_thread else None,
+        "load_started_at": _load_started_at,
+        "load_finished_at": _load_finished_at,
+        "load_in_progress_seconds": round(now - _load_started_at, 1) if _load_started_at and not _load_finished_at else None,
+        "last_load_error": _last_load_error,
+    })
 
 
 @app.route("/refresh", methods=["GET", "POST"])
