@@ -4,14 +4,20 @@ Listing pools are fetched and geocoded once at startup (not per-request) -
 each build involves live network calls to 11 property management sites plus
 OpenStreetMap geocoding (~600+ addresses, ~1 req/sec rate limit), which is
 too slow to repeat on every form submit and, on a platform like Render,
-too slow to do *before* the process starts listening on $PORT. Render's
-deploy health check gives up and marks the deploy failed if nothing binds
-the port within its scan window (confirmed in production: the 707-listing
-pool took long enough that Render killed the deploy after ~5 minutes of
-"No open ports detected"). So the initial load also happens in a background
-thread - gunicorn binds the port immediately, and the app serves the intake
-form right away; /submit shows a "still loading" message until the first
-load finishes.
+too slow to do *before* the process starts listening on $PORT.
+
+IMPORTANT: the background load must be started from gunicorn's `post_fork`
+hook (see gunicorn.conf.py), not from module-import-time code. Gunicorn
+imports app.py once in the MASTER process to validate the WSGI callable,
+and separately again in each WORKER after forking - a thread started at
+module level runs in the master, which never serves HTTP traffic, so
+/submit (handled by the worker) would see data that never arrives. This was
+confirmed in production: logs showed the master's thread finishing
+("Ready: 707 scored listings") while /submit kept 503ing forever, because
+the worker's own copy of SCORED_POOL/_data_ready never got touched.
+start_background_loading() is called from post_fork for each real worker,
+and again in the __main__ block for plain `python app.py` local runs where
+there's no gunicorn/post_fork at all.
 
 Two refresh paths keep that data from going stale after the initial load:
 1. A background thread reloads everything once a day. Only helps while the
@@ -107,9 +113,15 @@ def _refresh_loop():
             print(f"[pid {os.getpid()}] Background refresh failed, keeping existing data: {exc}")
 
 
-_initial_load_thread = threading.Thread(target=_initial_load, daemon=True)
-_initial_load_thread.start()
-threading.Thread(target=_refresh_loop, daemon=True).start()
+def start_background_loading():
+    """Starts the initial-load and daily-refresh threads. Must be called
+    inside the process that will actually serve requests - see the module
+    docstring for why this can't just happen at import time."""
+    global _initial_load_thread
+    print(f"[pid {os.getpid()}] Starting background data loading.")
+    _initial_load_thread = threading.Thread(target=_initial_load, daemon=True)
+    _initial_load_thread.start()
+    threading.Thread(target=_refresh_loop, daemon=True).start()
 
 
 def _build_prefs_from_form(form):
@@ -209,5 +221,6 @@ def submit():
 
 
 if __name__ == "__main__":
+    start_background_loading()
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
