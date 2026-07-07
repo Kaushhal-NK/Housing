@@ -39,15 +39,55 @@ def _haversine_miles(lat1, lon1, lat2, lon2):
 
 
 def _strip_unit_suffix(address):
-    """Unit/apartment/building-nickname suffixes (e.g. '- #3', 'Unit 302',
-    '- Whitney Manor') confuse Nominatim's street matching. Strip them and
-    geocode the underlying street address instead."""
-    street_part, _, rest = address.partition(",")
-    street_part = re.sub(r"#\s*\w+\s*$", "", street_part)
-    street_part = re.sub(r"\bUnit\s*\w+\s*$", "", street_part, flags=re.I)
-    street_part = re.sub(r"-\s*[A-Za-z][A-Za-z ]*$", "", street_part)
-    street_part = street_part.strip(" -")
-    return f"{street_part},{rest}" if rest else street_part
+    """Unit/apartment/building-nickname suffixes confuse Nominatim's street
+    matching. Handles the patterns actually seen across the 12 original USC
+    sources plus the Mid City/DTLA/Koreatown/Hollywood/Culver City/Santa
+    Monica expansion sources:
+      - trailing '#3', 'Unit 302', '- Whitney Manor' (alphabetic nickname)
+      - trailing NUMERIC unit suffixes: '- 107', '- 1351', '- A' (this was
+        the single biggest source of geocoding failures after the expansion -
+        the old regex only matched alphabetic dash-suffixes)
+      - 'APT 21' / 'Unit 302' sitting as its own comma-separated segment
+        between the street and city, e.g. '123 Main St, APT 21, Los Angeles, CA'
+      - compound/range street numbers like '1273-1275.5 W 35th St' or
+        '1418, 1418.5, 1420, 1420.5 West 28th Street' - collapsed to the
+        first street number only, since Nominatim can't parse a numeric range
+        as a single street address
+    """
+    parts = [p.strip() for p in address.split(",")]
+    if len(parts) < 3:
+        return address  # can't confidently split street vs city vs state
+
+    state_zip = parts[-1]
+    city = parts[-2]
+    street_parts = parts[:-2]
+
+    # Drop any segment that's purely a unit/apartment marker (e.g. "APT 21").
+    # Everything else gets joined with spaces, not commas - a compound street
+    # number range like "1418, 1418.5, 1420, 1420.5 West 28th Street" only
+    # parses correctly if we stop treating those internal commas as real
+    # field separators.
+    street_parts = [s for s in street_parts if not re.match(r"^(apt\.?|unit|#)\s*[\w-]*$", s, re.I)]
+    street_blob = " ".join(street_parts) if street_parts else parts[0]
+
+    # Collapse a compound/range street number down to just the first number,
+    # e.g. "1273-1275.5 W 35th St" -> "1273 W 35th St", or
+    # "1418 1418.5 1420 1420.5 West 28th Street" -> "1418 West 28th Street".
+    m = re.match(r"\s*(\d+)[\d.\-–,\s/]*?\s+([A-Za-z].*)", street_blob)
+    if m:
+        street_blob = f"{m.group(1)} {m.group(2)}"
+
+    street_blob = re.sub(r"#\s*\w+\s*$", "", street_blob)
+    street_blob = re.sub(r"\bUnit\s*\w+\s*$", "", street_blob, flags=re.I)
+    street_blob = re.sub(r"-\s*\w+\s*$", "", street_blob)  # trailing "- 107", "- A", "- Whitney Manor"
+    # A bare trailing number with no letters (e.g. "Western Ave 10237") is a
+    # repeated-unit-number artifact, not a real street name - seen from one
+    # company that writes "10237 Western Ave, 10237- A" (street number
+    # repeated as a unit prefix). Strip it.
+    street_blob = re.sub(r"\s+\d+\s*$", "", street_blob)
+    street_blob = re.sub(r"\s{2,}", " ", street_blob).strip(" -")
+
+    return f"{street_blob}, {city}, {state_zip}"
 
 
 def _query_nominatim(query, timeout):

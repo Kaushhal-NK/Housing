@@ -35,6 +35,17 @@ LA_COUNTY_CITIES = {
     "east los angeles", "marina del rey", "athens", "florence-graham",
     "willowbrook", "view park-windsor hills", "ladera heights", "del aire",
     "westmont", "walnut park", "west athens", "lennox",
+    # LA neighborhoods that show up as their own "city" value in listing data
+    # rather than under "Los Angeles" - added for the Mid City/DTLA/Koreatown/
+    # Hollywood/Culver City/Santa Monica expansion. Note Koreatown, Mid City,
+    # and DTLA listings already come through under the generic "Los Angeles"
+    # city label, so they don't need separate entries here. Deliberately NOT
+    # adding San Fernando Valley neighborhoods (Sherman Oaks, Van Nuys, Reseda,
+    # Encino, Tarzana, Canoga Park, Winnetka, Northridge, North Hollywood,
+    # Porter Ranch) or far-north LA County (Castaic, Santa Clarita) - those are
+    # real LA County cities/neighborhoods but genuinely far from every target
+    # area, so they're excluded on purpose, not missed.
+    "hollywood", "west los angeles", "venice", "pacific palisades",
 }
 
 

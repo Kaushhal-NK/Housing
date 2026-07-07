@@ -101,6 +101,14 @@ def score_listing(listing, prefs, distance_miles):
     return total
 
 
+def _describe_bedrooms(bedrooms):
+    if bedrooms == 0:
+        return "a studio"
+    if bedrooms == 1:
+        return "1 bedroom"
+    return f"{int(bedrooms)} bedrooms"
+
+
 def explain_match(listing, prefs, distance_miles):
     parts = []
 
@@ -109,7 +117,7 @@ def explain_match(listing, prefs, distance_miles):
         if (prefs["unit_size"] == "3br+" and listing.bedrooms >= 3) or listing.bedrooms == wanted:
             parts.append(f"matches your {prefs['unit_size']} size preference")
         else:
-            parts.append(f"has {int(listing.bedrooms)} bedroom(s), close to your {prefs['unit_size']} preference")
+            parts.append(f"has {_describe_bedrooms(listing.bedrooms)}, close to your {prefs['unit_size']} preference")
 
     parts.append(f"is {distance_miles} miles from USC (within your {prefs['distance_max_miles']}-mile radius)")
 

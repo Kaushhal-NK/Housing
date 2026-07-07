@@ -23,6 +23,26 @@ CONFIRMED_APPFOLIO_SOURCES = [
     },
 ]
 
+# Expansion beyond the original 12 USC-specific sources: legitimate property
+# management companies (not aggregators) operating in Mid City, DTLA,
+# Koreatown, Hollywood, Culver City, and Santa Monica, found the same way as
+# the original 12 - checked each candidate's own site for AppFolio branding,
+# then confirmed the *.appfolio.com/listings subdomain is live and returns
+# real listing cards before adding it here. "lotus.appfolio.com" was found
+# during discovery but excluded - its listings are all in Arizona, so it's
+# an unrelated company that happened to share a subdomain guess, not the LA
+# firm ("Lotus West Properties") the search results implied.
+NEIGHBORHOOD_APPFOLIO_SOURCES = [
+    {"site_name": "MGMT Group", "domain": "mgmtla.com", "appfolio_subdomain": "mgmtrentalgroup"},
+    {"site_name": "DTLA MGMT", "domain": "dtlamgmt.com", "appfolio_subdomain": "dtlamanagement"},
+    {"site_name": "Winstar Properties", "domain": None, "appfolio_subdomain": "winstarproperties"},
+    {"site_name": "EGL Properties", "domain": "eglproperties.com", "appfolio_subdomain": "eglproperties"},
+    {"site_name": "LAPMG", "domain": "losangelespropertymanagementgroup.com", "appfolio_subdomain": "lapmg"},
+    {"site_name": "Ben Leeds Properties", "domain": "benleedsproperties.com", "appfolio_subdomain": "benleedsproperties"},
+    {"site_name": "Stern Property Management", "domain": "sternmanagement.com", "appfolio_subdomain": "sternproperty"},
+    {"site_name": "Scott Properties Group", "domain": "scott-properties.com", "appfolio_subdomain": "scottproperties"},
+]
+
 # Sites where a platform is known/suspected but no usable company ID/feed was
 # recoverable, or no platform signal was found at all -> Phase 3 fallback.
 FALLBACK_SOURCES = [
