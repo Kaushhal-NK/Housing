@@ -3,11 +3,25 @@
 Listing pools are fetched and geocoded once at startup (not per-request) -
 each build involves live network calls to 3 property management sites plus
 OpenStreetMap geocoding, which is too slow to repeat on every form submit.
+
+Two refresh paths keep that data from going stale:
+1. A background thread reloads everything once a day. Only helps while the
+   process stays alive - Render's free tier spins the service down after 15
+   minutes idle, so on free tier this thread may never fire between cold
+   starts.
+2. A /refresh endpoint that an external scheduler (Render Cron Job,
+   cron-job.org, etc.) can hit on a schedule to force a reload regardless of
+   tier. If REFRESH_TOKEN is set as an env var, /refresh requires
+   ?token=<value> so the public internet can't trigger reloads at will;
+   if unset, /refresh is open (fine for a low-stakes demo, not recommended
+   once this has real traffic).
 """
 
 import os
+import threading
+import time
 
-from flask import Flask, render_template, request
+from flask import Flask, jsonify, render_template, request
 
 from pools import build_pools
 from geocode import distances_for_addresses
@@ -15,11 +29,45 @@ from phase5_scoring import run_matching
 
 app = Flask(__name__)
 
-print("Loading listing pools at startup...")
-SCORED_POOL, BONUS_POOL = build_pools()
-ALL_ADDRESSES = [l.address for l in SCORED_POOL] + [l.address for l in BONUS_POOL]
-DISTANCES = distances_for_addresses(ALL_ADDRESSES)
-print(f"Ready: {len(SCORED_POOL)} scored listings, {len(BONUS_POOL)} bonus listings.")
+REFRESH_INTERVAL_SECONDS = 24 * 60 * 60
+REFRESH_TOKEN = os.environ.get("REFRESH_TOKEN")
+_data_lock = threading.Lock()
+
+
+def _load_data():
+    print("Loading listing pools...")
+    scored_pool, bonus_pool = build_pools()
+    all_addresses = [l.address for l in scored_pool] + [l.address for l in bonus_pool]
+    distances = distances_for_addresses(all_addresses)
+    print(f"Ready: {len(scored_pool)} scored listings, {len(bonus_pool)} bonus listings.")
+    return scored_pool, bonus_pool, distances
+
+
+SCORED_POOL, BONUS_POOL, DISTANCES = _load_data()
+
+
+def _apply_refresh():
+    """Reload the pools and swap them in under a lock. Raises on failure so
+    callers (the background loop, the /refresh route) can decide how to
+    report it - either way the old data stays live until a reload succeeds."""
+    global SCORED_POOL, BONUS_POOL, DISTANCES
+    scored_pool, bonus_pool, distances = _load_data()
+    with _data_lock:
+        SCORED_POOL, BONUS_POOL, DISTANCES = scored_pool, bonus_pool, distances
+    return scored_pool, bonus_pool
+
+
+def _refresh_loop():
+    while True:
+        time.sleep(REFRESH_INTERVAL_SECONDS)
+        try:
+            _apply_refresh()
+            print("Background refresh complete.")
+        except Exception as exc:
+            print(f"Background refresh failed, keeping existing data: {exc}")
+
+
+threading.Thread(target=_refresh_loop, daemon=True).start()
 
 
 def _build_prefs_from_form(form):
@@ -66,11 +114,24 @@ def index():
     return render_template("index.html")
 
 
+@app.route("/refresh", methods=["GET", "POST"])
+def refresh():
+    if REFRESH_TOKEN and request.args.get("token") != REFRESH_TOKEN:
+        return jsonify({"status": "forbidden"}), 403
+
+    try:
+        scored_pool, bonus_pool = _apply_refresh()
+    except Exception as exc:
+        return jsonify({"status": "error", "message": str(exc)}), 500
+
+    return jsonify({"status": "ok", "scored_count": len(scored_pool), "bonus_count": len(bonus_pool)})
+
+
 @app.route("/submit", methods=["POST"])
 def submit():
     prefs = _build_prefs_from_form(request.form)
 
-    matched = run_matching(SCORED_POOL, prefs, DISTANCES)
+    matched, used_fallback = run_matching(SCORED_POOL, prefs, DISTANCES)
     results = []
     for listing, score, distance, explanation in matched:
         d = listing.to_dict()
@@ -81,7 +142,8 @@ def submit():
 
     bonus_results = _bonus_matches(prefs)
 
-    return render_template("results.html", results=results, bonus_results=bonus_results)
+    return render_template("results.html", results=results, bonus_results=bonus_results,
+                            used_fallback=used_fallback)
 
 
 if __name__ == "__main__":

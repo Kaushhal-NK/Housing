@@ -29,9 +29,12 @@ ENTIRE_UNIT_TEST_PROFILE = {
 }
 
 
-def print_results(label, prefs, results):
+def print_results(label, prefs, results, used_fallback):
     print(f"\n{'=' * 70}\nTOP {len(results)} RESULTS - {label}\n{'=' * 70}")
     print(f"Profile: {prefs}\n")
+    if used_fallback:
+        print("Oops - nothing matched your exact unit size preference. "
+              "Here are some other options we think will match:\n")
     for rank, (listing, score, distance, explanation) in enumerate(results, start=1):
         d = listing.to_dict()
         print(f"{rank}. {d['address']}")
@@ -47,11 +50,11 @@ def main():
     addresses = [l.address for l in scored_pool]
     distances = distances_for_addresses(addresses)
 
-    shared_results = run_matching(scored_pool, SHARED_UNIT_TEST_PROFILE, distances)
-    print_results("SHARED UNIT TEST PROFILE", SHARED_UNIT_TEST_PROFILE, shared_results)
+    shared_results, shared_fallback = run_matching(scored_pool, SHARED_UNIT_TEST_PROFILE, distances)
+    print_results("SHARED UNIT TEST PROFILE", SHARED_UNIT_TEST_PROFILE, shared_results, shared_fallback)
 
-    entire_results = run_matching(scored_pool, ENTIRE_UNIT_TEST_PROFILE, distances)
-    print_results("ENTIRE UNIT TEST PROFILE", ENTIRE_UNIT_TEST_PROFILE, entire_results)
+    entire_results, entire_fallback = run_matching(scored_pool, ENTIRE_UNIT_TEST_PROFILE, distances)
+    print_results("ENTIRE UNIT TEST PROFILE", ENTIRE_UNIT_TEST_PROFILE, entire_results, entire_fallback)
 
 
 if __name__ == "__main__":

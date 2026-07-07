@@ -1,0 +1,233 @@
+:root {
+  --cardinal: #990000;
+  --cardinal-dark: #7a0000;
+  --gold: #ffc72c;
+  --ink: #1c1c1c;
+  --muted: #6b6b6b;
+  --border: #e6e2dd;
+  --bg: #faf8f5;
+  --card-bg: #ffffff;
+  --radius: 12px;
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 6px 18px rgba(0, 0, 0, 0.05);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  margin: 0;
+  padding: 0 16px 60px;
+}
+
+.page {
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.top-bar {
+  background: linear-gradient(135deg, var(--cardinal) 0%, var(--cardinal-dark) 100%);
+  margin: 0 -16px 32px;
+  padding: 28px 16px;
+  color: white;
+  box-shadow: var(--shadow);
+}
+
+.top-bar .inner {
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.top-bar h1 {
+  margin: 0;
+  font-size: 1.6rem;
+  letter-spacing: -0.01em;
+}
+
+.top-bar .tagline {
+  margin-top: 4px;
+  color: var(--gold);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 24px;
+}
+
+/* --- form --- */
+
+.form-grid { display: flex; flex-direction: column; gap: 20px; }
+
+.field label {
+  display: block;
+  font-weight: 600;
+  font-size: 0.92rem;
+  margin-bottom: 6px;
+  color: var(--ink);
+}
+
+.field .hint {
+  font-weight: 400;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+input, select {
+  width: 100%;
+  padding: 10px 12px;
+  font-size: 0.95rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ink);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+input:focus, select:focus {
+  outline: none;
+  border-color: var(--cardinal);
+  box-shadow: 0 0 0 3px rgba(153, 0, 0, 0.12);
+}
+
+.btn-primary {
+  background: var(--cardinal);
+  color: white;
+  border: none;
+  padding: 13px 24px;
+  font-size: 1rem;
+  font-weight: 600;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.05s;
+}
+
+.btn-primary:hover { background: var(--cardinal-dark); }
+.btn-primary:active { transform: translateY(1px); }
+
+/* --- results --- */
+
+.summary-line {
+  color: var(--muted);
+  margin-bottom: 20px;
+  font-size: 0.95rem;
+}
+
+.listing-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 20px 22px;
+  margin-bottom: 16px;
+  position: relative;
+}
+
+.listing-card .rank {
+  position: absolute;
+  top: -10px;
+  left: 18px;
+  background: var(--cardinal);
+  color: white;
+  font-weight: 700;
+  font-size: 0.8rem;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.listing-card h3 {
+  margin: 4px 0 12px;
+  font-size: 1.08rem;
+}
+
+.listing-card h3 a {
+  color: var(--cardinal);
+  text-decoration: none;
+}
+
+.listing-card h3 a:hover { text-decoration: underline; }
+
+.rent-tag {
+  display: inline-block;
+  background: var(--gold);
+  color: #4a3800;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  margin-right: 8px;
+}
+
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+
+.chip {
+  background: #f2efe9;
+  border: 1px solid var(--border);
+  color: var(--ink);
+  font-size: 0.82rem;
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+
+.explanation {
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-style: italic;
+  line-height: 1.4;
+}
+
+.no-matches {
+  background: #fff8e6;
+  border: 1px solid #f0d98c;
+  border-radius: var(--radius);
+  padding: 20px 22px;
+}
+
+.bonus-section {
+  margin-top: 44px;
+  padding-top: 28px;
+  border-top: 2px solid var(--border);
+}
+
+.bonus-section h2 {
+  font-size: 1.15rem;
+  margin-bottom: 6px;
+}
+
+.bonus-section .desc {
+  color: var(--muted);
+  font-size: 0.88rem;
+  margin-bottom: 16px;
+}
+
+.bonus-card {
+  background: var(--card-bg);
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+  padding: 12px 16px;
+  margin-bottom: 10px;
+  font-size: 0.88rem;
+}
+
+.bonus-card a { color: var(--cardinal); text-decoration: none; font-weight: 600; }
+.bonus-card a:hover { text-decoration: underline; }
+
+.back-link {
+  display: inline-block;
+  margin-top: 28px;
+  color: var(--cardinal);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.back-link:hover { text-decoration: underline; }

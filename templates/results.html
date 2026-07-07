@@ -2,62 +2,78 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Your Matches - USC Student Housing Matcher</title>
-  <style>
-    body { font-family: sans-serif; max-width: 760px; margin: 40px auto; padding: 0 16px; }
-    .listing { border: 1px solid #ddd; border-radius: 8px; padding: 16px; margin-bottom: 12px; }
-    .listing h3 { margin: 0 0 8px 0; }
-    .meta { color: #444; font-size: 0.95rem; }
-    .explanation { margin-top: 8px; font-style: italic; }
-    .bonus-section { margin-top: 40px; border-top: 2px solid #ccc; padding-top: 16px; }
-    .bonus-listing { padding: 8px 0; border-bottom: 1px solid #eee; font-size: 0.9rem; }
-    .no-matches { padding: 16px; background: #fff3cd; border-radius: 8px; }
-    a.back { display: inline-block; margin-top: 24px; }
-  </style>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-  <h1>Your Matches</h1>
-
-  {% if results %}
-    <p>Top {{ results|length }} match{{ 'es' if results|length != 1 else '' }}:</p>
-    {% for r in results %}
-      <div class="listing">
-        <h3>{{ loop.index }}. {{ r.address }}</h3>
-        <div class="meta">
-          Rent: ${{ '%.0f'|format(r.rent) }}/mo &nbsp;|&nbsp;
-          Bed/Bath: {{ r.bedrooms if r.bedrooms is not none else '?' }} / {{ r.bathrooms if r.bathrooms is not none else '?' }} &nbsp;|&nbsp;
-          Distance: {{ r.distance }} mi &nbsp;|&nbsp;
-          Pets: {{ r.pet_policy if r.pet_policy else 'not stated' }} &nbsp;|&nbsp;
-          Source: {{ r.source }}
-        </div>
-        <div class="explanation">{{ r.explanation }}</div>
-      </div>
-    {% endfor %}
-  {% else %}
-    <div class="no-matches">
-      <p><strong>No matches found.</strong> Every listing within your criteria was filtered out.</p>
-      <p>Try raising your monthly budget or widening your distance radius from USC, then search again.</p>
+  <div class="top-bar">
+    <div class="inner">
+      <h1>Your Matches</h1>
+      <div class="tagline">Ranked by budget fit, size, privacy, and distance from USC</div>
     </div>
-  {% endif %}
+  </div>
 
-  <div class="bonus-section">
-    <h2>Bonus listings (unscored)</h2>
-    <p>Within your budget and distance radius, but excluded from ranking because they're missing bed/bath or other data. Worth checking manually:</p>
-    {% if bonus_results %}
-      {% for b in bonus_results %}
-        <div class="bonus-listing">
-          {{ b.address }} &nbsp;|&nbsp; ${{ '%.0f'|format(b.rent) }}/mo &nbsp;|&nbsp;
-          Distance: {{ b.distance }} mi &nbsp;|&nbsp;
-          Bed/Bath: {{ b.bedrooms if b.bedrooms is not none else '?' }} / {{ b.bathrooms if b.bathrooms is not none else '?' }} &nbsp;|&nbsp;
-          Pets: {{ b.pet_policy if b.pet_policy else 'not stated' }} &nbsp;|&nbsp;
-          Source: {{ b.source }}
+  <div class="page">
+    {% if results %}
+      {% if used_fallback %}
+        <div class="no-matches" style="margin-bottom: 20px;">
+          <strong>Oops - nothing matched your exact unit size preference.</strong>
+          <br>Here are some other options we think will match:
+        </div>
+      {% endif %}
+      <p class="summary-line">Top {{ results|length }} match{{ 'es' if results|length != 1 else '' }}</p>
+      {% for r in results %}
+        <div class="listing-card">
+          <div class="rank">{{ loop.index }}</div>
+          <h3>
+            {% if r.url %}<a href="{{ r.url }}" target="_blank" rel="noopener">{{ r.address }}</a>{% else %}{{ r.address }}{% endif %}
+          </h3>
+          <div class="chips">
+            <span class="rent-tag">${{ '%.0f'|format(r.rent) }}/mo</span>
+            {% if r.bedrooms is none and r.bathrooms is none %}
+              <span class="chip">Bed/bath unknown - see listing details</span>
+            {% else %}
+              <span class="chip">{{ r.bedrooms if r.bedrooms is not none else 'unknown' }} bed / {{ r.bathrooms if r.bathrooms is not none else 'unknown' }} bath</span>
+            {% endif %}
+            <span class="chip">{{ r.distance }} mi from USC</span>
+            <span class="chip">{{ r.pet_policy if r.pet_policy else 'Pet policy not stated' }}</span>
+            <span class="chip">{{ r.source }}</span>
+          </div>
+          <div class="explanation">{{ r.explanation }}</div>
         </div>
       {% endfor %}
     {% else %}
-      <p>(none)</p>
+      <div class="no-matches">
+        <strong>No matches found.</strong> Every listing within your criteria was filtered out.
+        <br>Try raising your monthly budget or widening your distance radius from USC, then search again.
+      </div>
     {% endif %}
-  </div>
 
-  <a class="back" href="/">&larr; Search again</a>
+    <div class="bonus-section">
+      <h2>Bonus listings (unscored)</h2>
+      <div class="desc">Within your budget and distance radius, but excluded from ranking because they're missing bed/bath or other data. Worth checking manually:</div>
+      {% if bonus_results %}
+        {% for b in bonus_results %}
+          <div class="bonus-card">
+            {% if b.url %}<a href="{{ b.url }}" target="_blank" rel="noopener">{{ b.address }}</a>{% else %}<strong>{{ b.address }}</strong>{% endif %}
+            &nbsp;&middot;&nbsp; ${{ '%.0f'|format(b.rent) }}/mo
+            &nbsp;&middot;&nbsp; {{ b.distance }} mi
+            {% if b.bedrooms is none and b.bathrooms is none %}
+              &nbsp;&middot;&nbsp; Bed/bath unknown - see listing details
+            {% else %}
+              &nbsp;&middot;&nbsp; {{ b.bedrooms if b.bedrooms is not none else 'unknown' }} bed / {{ b.bathrooms if b.bathrooms is not none else 'unknown' }} bath
+            {% endif %}
+            &nbsp;&middot;&nbsp; {{ b.pet_policy if b.pet_policy else 'not stated' }}
+            &nbsp;&middot;&nbsp; {{ b.source }}
+          </div>
+        {% endfor %}
+      {% else %}
+        <p class="desc">(none)</p>
+      {% endif %}
+    </div>
+
+    <a class="back-link" href="/">&larr; Search again</a>
+  </div>
 </body>
 </html>

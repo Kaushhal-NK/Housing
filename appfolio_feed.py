@@ -110,6 +110,9 @@ def fetch_appfolio_listings(site_name: str, subdomain: str, timeout: int = 20) -
         if pet_el:
             pet_policy = pet_el.get_text(strip=True).replace("Pet Policy:", "").strip() or None
 
+        detail_link = card.select_one(".js-link-to-detail")
+        listing_url = f"https://{subdomain}.appfolio.com{detail_link['href']}" if detail_link else None
+
         listings.append(Listing(
             address=address,
             rent=rent,
@@ -117,6 +120,7 @@ def fetch_appfolio_listings(site_name: str, subdomain: str, timeout: int = 20) -
             bathrooms=bathrooms,
             available_date=available_date,
             pet_policy=pet_policy,
+            url=listing_url,
             square_feet=square_feet,
             source=site_name,
         ))

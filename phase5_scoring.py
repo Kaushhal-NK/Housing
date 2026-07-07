@@ -125,8 +125,24 @@ def explain_match(listing, prefs, distance_miles):
     return ", ".join(parts[:-1]) + ", and " + parts[-1] + "." if len(parts) > 1 else parts[0] + "."
 
 
+def _is_exact_size_match(bedrooms, unit_size_pref):
+    """Unit size started as a soft filter, but a bigger unit with a good
+    price/distance score could out-rank an exact-size match, which felt like
+    a bug to a student searching specifically for a studio. Fix: prefer exact
+    matches first (as their own top tier), and only fall back to near-size
+    listings when there are zero exact matches for that pool."""
+    if bedrooms is None:
+        return False
+    if unit_size_pref == "3br+":
+        return bedrooms >= 3
+    return bedrooms == UNIT_SIZE_TO_BEDROOMS[unit_size_pref]
+
+
 def run_matching(pool, prefs, distances_by_address, top_n=10):
-    """Returns a list of (listing, score, distance, explanation), sorted best first."""
+    """Returns (results, used_fallback). results is a list of
+    (listing, score, distance, explanation), sorted best first. used_fallback
+    is True when no listing matched the exact unit_size preference and the
+    returned results are the closest available sizes instead."""
     results = []
     dropped_reasons = {}
 
@@ -139,9 +155,16 @@ def run_matching(pool, prefs, distances_by_address, top_n=10):
 
         score = score_listing(listing, prefs, distance)
         explanation = explain_match(listing, prefs, distance)
-        results.append((listing, score, distance, explanation))
+        exact_size = _is_exact_size_match(listing.bedrooms, prefs["unit_size"])
+        results.append((listing, score, distance, explanation, exact_size))
 
-    results.sort(key=lambda r: r[1], reverse=True)
+    exact_matches = [r for r in results if r[4]]
+    used_fallback = len(results) > 0 and len(exact_matches) == 0
+    chosen = exact_matches if exact_matches else results
 
-    print(f"Hard-filter drops: {dropped_reasons} | Survived: {len(results)} of {len(pool)}")
-    return results[:top_n]
+    chosen.sort(key=lambda r: r[1], reverse=True)
+    top = [(l, s, d, e) for l, s, d, e, _ in chosen[:top_n]]
+
+    print(f"Hard-filter drops: {dropped_reasons} | Survived: {len(results)} of {len(pool)} | "
+          f"Exact size matches: {len(exact_matches)} | Used fallback: {used_fallback}")
+    return top, used_fallback

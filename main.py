@@ -6,17 +6,25 @@ from geocode import distances_for_addresses
 from phase5_scoring import run_matching
 
 
-def print_top_results(results):
+def _fmt_count(value):
+    return value if value is not None else "Unknown (see listing details)"
+
+
+def print_top_results(results, used_fallback):
     if not results:
         print("\nNo matches found. Every listing within your criteria was filtered out.")
         print("Try raising your monthly budget or widening your distance radius from USC, then run again.")
         return
 
+    if used_fallback:
+        print("\nOops - nothing matched your exact unit size preference. "
+              "Here are some other options we think will match:")
+
     print(f"\nTop {len(results)} match{'es' if len(results) != 1 else ''}:\n")
     for rank, (listing, score, distance, explanation) in enumerate(results, start=1):
         d = listing.to_dict()
         print(f"{rank}. {d['address']}")
-        print(f"   rent=${d['rent']:.0f} | bed={d['bedrooms']} bath={d['bathrooms']} | "
+        print(f"   rent=${d['rent']:.0f} | bed={_fmt_count(d['bedrooms'])} bath={_fmt_count(d['bathrooms'])} | "
               f"distance={distance} mi | pets={d['pet_policy']} | source={d['source']}")
         print(f"   -> {explanation}")
 
@@ -47,7 +55,8 @@ def print_bonus_matches(bonus_pool, prefs, distances_by_address):
     for listing, distance in matches:
         d = listing.to_dict()
         print(f"  - {d['address']} | rent=${d['rent']:.0f} | distance={distance} mi | "
-              f"bed={d['bedrooms']} bath={d['bathrooms']} | pets={d['pet_policy']} | source={d['source']}")
+              f"bed={_fmt_count(d['bedrooms'])} bath={_fmt_count(d['bathrooms'])} | "
+              f"pets={d['pet_policy']} | source={d['source']}")
 
 
 def main():
@@ -61,8 +70,8 @@ def main():
     all_addresses = [l.address for l in scored_pool] + [l.address for l in bonus_pool]
     distances = distances_for_addresses(all_addresses)
 
-    results = run_matching(scored_pool, prefs, distances)
-    print_top_results(results)
+    results, used_fallback = run_matching(scored_pool, prefs, distances)
+    print_top_results(results, used_fallback)
     print_bonus_matches(bonus_pool, prefs, distances)
 
 

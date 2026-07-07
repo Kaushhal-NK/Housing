@@ -14,6 +14,7 @@ class Listing:
     pet_policy: Optional[str]
     square_feet: Optional[float]
     source: str
+    url: Optional[str] = None
 
     def to_dict(self):
         return asdict(self)
